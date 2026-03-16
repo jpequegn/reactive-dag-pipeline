@@ -8,23 +8,35 @@ from typing import Callable
 
 from dag.cell import Cell
 from dag.graph import DAGGraph
+from dag.store import CellStore
 
 
 class PipelineEngine:
     """Execute cells in topological order, with reactive invalidation."""
 
-    def __init__(self, cells: list[Cell]) -> None:
+    def __init__(
+        self, cells: list[Cell], *, store: CellStore | None = None
+    ) -> None:
         self._cells = cells
         self._graph = DAGGraph()
         self._graph.build(cells)
         self._graph.validate()
+        self._store = store
 
     def run_all(self) -> None:
-        """Execute all cells in topological order."""
+        """Execute all cells in topological order, loading cached outputs when fresh."""
         for c in self._cells:
             c.status = "pending"
+        must_run: set[str] = set()
         for c in self._graph.topological_order():
-            self._execute_cell(c)
+            if c.name not in must_run and self._store and self._store.is_fresh(c):
+                c.output = self._store.load(c)
+                c.status = "done"
+            else:
+                self._execute_cell(c)
+                # Descendants must re-execute since this cell's output changed
+                for desc in self._graph.descendants(c):
+                    must_run.add(desc.name)
 
     def invalidate(self, cell: Cell) -> None:
         """Mark cell and all its descendants as stale."""
@@ -53,6 +65,8 @@ class PipelineEngine:
         try:
             cell.output = cell.func(*dep_outputs)
             cell.status = "done"
+            if self._store:
+                self._store.save(cell)
         except Exception as exc:
             cell.status = "error"
             cell.error = exc
