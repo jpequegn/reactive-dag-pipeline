@@ -30,3 +30,24 @@ class Cell:
 
     def __repr__(self) -> str:
         return f"Cell({self.name!r})"
+
+
+def cell(func: Callable | None = None, *, depends_on: list[Cell] | None = None) -> Cell:
+    """Decorator to create a Cell from a function.
+
+    Usage:
+        @cell
+        def raw_data(): ...
+
+        @cell(depends_on=[raw_data])
+        def processed(raw_data): ...
+    """
+    if func is not None:
+        # Called as @cell (no parentheses)
+        return Cell(name=func.__name__, func=func, depends_on=depends_on or [])
+
+    # Called as @cell(depends_on=[...])
+    def wrapper(fn: Callable) -> Cell:
+        return Cell(name=fn.__name__, func=fn, depends_on=depends_on or [])
+
+    return wrapper  # type: ignore[return-value]
