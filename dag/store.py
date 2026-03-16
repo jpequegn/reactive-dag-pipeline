@@ -11,12 +11,24 @@ from typing import Any
 from dag.cell import Cell
 
 
-def _bytecode_hash(cell: Cell) -> str:
-    """SHA-256 of the cell's function bytecode and constants."""
-    code = cell.func.__code__
-    h = hashlib.sha256()
+def _hash_code(h: hashlib._Hash, code: object) -> None:
+    """Recursively hash a code object, handling nested code (genexprs, lambdas)."""
+    import types
+
+    if not isinstance(code, types.CodeType):
+        return
     h.update(code.co_code)
-    h.update(repr(code.co_consts).encode())
+    for const in code.co_consts:
+        if isinstance(const, types.CodeType):
+            _hash_code(h, const)
+        else:
+            h.update(repr(const).encode())
+
+
+def _bytecode_hash(cell: Cell) -> str:
+    """SHA-256 of the cell's function bytecode and constants (recursive)."""
+    h = hashlib.sha256()
+    _hash_code(h, cell.func.__code__)
     return h.hexdigest()
 
 
