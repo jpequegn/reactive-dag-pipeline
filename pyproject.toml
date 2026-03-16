@@ -1,0 +1,14 @@
+[project]
+name = "reactive-dag-pipeline"
+version = "0.1.0"
+description = "A lightweight reactive DAG execution engine"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "click>=8.3.1",
+    "networkx>=3.6.1",
+    "rich>=14.3.3",
+]
+
+[project.scripts]
+dag = "dag.cli:main"
