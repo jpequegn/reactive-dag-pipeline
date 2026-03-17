@@ -99,6 +99,17 @@ def invalidate(pipeline: str, cell_name: str | None, invalidate_all: bool) -> No
 
 @main.command()
 @click.argument("pipeline", type=click.Path(exists=True))
+@click.option("--interval", default=0.5, help="Poll interval in seconds.", show_default=True)
+def watch(pipeline: str, interval: float) -> None:
+    """Watch a pipeline file and re-execute reactively on save."""
+    from dag.watcher import PipelineWatcher
+
+    watcher = PipelineWatcher(pipeline, poll_interval=interval)
+    watcher.watch()
+
+
+@main.command()
+@click.argument("pipeline", type=click.Path(exists=True))
 def graph(pipeline: str) -> None:
     """Print the dependency graph as ASCII."""
     from networkx.readwrite.text import generate_network_text
